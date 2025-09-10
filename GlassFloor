@@ -1,1 +1,568 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumo's Bridge - The Health Quest</title>
+    <style>
+        /* CSS reset and basic styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e0f2f7; /* Lumo's Den background blue */
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 2000px;
+        }
+
+        /* --- Lumo's Den Theme Colors --- */
+        :root {
+            --background-blue: #e0f2f7;
+            --grass-green: #a7d36b;
+            --accent-green: #6aa84f;
+            --action-orange: #f2a74c;
+            --ui-white: #ffffff;
+            --dark-text: #333333;
+        }
+
+        /* Bridge and environment */
+        .bridge-container {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotateX(15deg);
+            width: 1200px;
+            height: 150px;
+            z-index: 10;
+        }
+
+        .platform {
+            position: absolute;
+            width: 120px;
+            height: 150px;
+            background: var(--ui-white);
+            border: 3px solid var(--accent-green);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            z-index: 15;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .platform.start {
+            left: -150px;
+            background: linear-gradient(135deg, var(--grass-green), var(--accent-green));
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .platform.end {
+            right: -150px;
+            background: linear-gradient(135deg, var(--action-orange), #ff8c00);
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* The main visual change: a dragon image */
+        .player {
+            position: absolute;
+            width: 80px; /* Adjusted size for dragon */
+            height: 80px;
+            background: url("https://i.ibb.co/689Lq9k/lumo-dragon.png") no-repeat center center;
+            background-size: contain; /* ensures image fits */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 20;
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            top: -100px; /* Adjusted position to account for new size */
+            left: -100px;
+        }
+
+        .player.moving {
+            transition-duration: 1.2s;
+        }
+        
+        .glass-panel {
+            position: absolute;
+            width: 100px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.5); /* Semi-transparent white */
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 2px solid var(--ui-white);
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.5s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--dark-text);
+        }
+
+        .glass-panel:hover {
+            background: rgba(255, 255, 255, 0.7);
+            transform: translateY(-5px);
+        }
+        
+        .glass-panel.safe {
+            border-color: var(--accent-green);
+            background: rgba(106, 168, 79, 0.3);
+            box-shadow: 0 0 20px rgba(106, 168, 79, 0.5);
+        }
+
+        .glass-panel.broken {
+            background: rgba(255, 255, 255, 0.2);
+            animation: shatterPanel 1s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        .question-interface {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ui-white);
+            border: 2px solid var(--accent-green);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            color: var(--dark-text);
+            text-align: center;
+            z-index: 100;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        .question-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--action-orange);
+        }
+
+        .question-text {
+            font-size: 1.3rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: var(--dark-text);
+        }
+
+        .answer-btn {
+            flex: 1;
+            max-width: 200px;
+            padding: 15px 30px;
+            border: 2px solid var(--accent-green);
+            border-radius: 10px;
+            background: var(--background-blue);
+            color: var(--dark-text);
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .answer-btn:hover {
+            background: var(--background-blue);
+            border-color: var(--action-orange);
+            transform: translateY(-2px);
+        }
+        
+        .answer-btn.correct {
+            border-color: var(--accent-green);
+            background: var(--accent-green);
+            color: var(--ui-white);
+            box-shadow: 0 0 20px rgba(106, 168, 79, 0.5);
+        }
+
+        .answer-btn.incorrect {
+            border-color: var(--action-orange);
+            background: var(--action-orange);
+            color: var(--ui-white);
+            box-shadow: 0 0 20px rgba(242, 167, 76, 0.5);
+        }
+
+        .step-forward-btn {
+            display: none;
+            width: 200px;
+            margin: 20px auto;
+            padding: 15px 30px;
+            background: linear-gradient(45deg, var(--accent-green), var(--grass-green));
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        /* --- Game Screens with Lumo's Palette --- */
+        .game-screen {
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--dark-text);
+        }
+
+        .screen-content {
+            background: rgba(255, 255, 255, 0.5);
+            border: 2px solid var(--accent-green);
+            backdrop-filter: blur(10px);
+            color: var(--dark-text);
+        }
+
+        .intro-title {
+            color: var(--accent-green);
+        }
+
+        .success-title {
+            color: var(--action-orange);
+        }
+
+        .fail-title {
+            color: #d85757;
+            text-shadow: none;
+        }
+
+        .screen-btn {
+            background: linear-gradient(45deg, var(--action-orange), #e08c35);
+            color: white;
+            border-radius: 5px;
+        }
+        
+        .step-dot {
+            background: rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .step-dot.completed {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .step-dot.current {
+            background: var(--action-orange);
+            border-color: var(--action-orange);
+        }
+        
+        /* Rest of the CSS remains the same */
+        @keyframes shatterPanel {
+            0% { transform: rotateX(0deg) translateY(0px); opacity: 1; }
+            30% { transform: rotateX(15deg) translateY(10px); opacity: 0.7; }
+            100% { transform: rotateX(90deg) translateY(500px); opacity: 0; }
+        }
+
+        .player.falling {
+            animation: playerFall 2s ease-in forwards;
+            z-index: 1;
+        }
+
+        @keyframes playerFall {
+            0% { transform: translateY(0px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(800px) rotate(720deg); opacity: 0; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        @media (max-width: 768px) {
+            .bridge-container {
+                width: 90%;
+                transform: translate(-50%, -50%) rotateX(15deg) scale(0.8);
+            }
+            .question-interface { top: 30px; padding: 20px; }
+            .answer-buttons { flex-direction: column; gap: 15px; }
+            .screen-title { font-size: 2.5rem; }
+            .player { width: 60px; height: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-screen" id="introScreen">
+        <div class="screen-content">
+            <div class="screen-title intro-title">🌈 Lumo's Bridge Quest 🌈</div>
+            <div class="screen-message">
+                Answer each question correctly to cross the magical bridge!<br><br>
+                One wrong move and the glass will break! Can you make it to the end?
+            </div>
+            <button class="screen-btn" onclick="startChallenge()">Begin the Quest</button>
+        </div>
+    </div>
+
+    <div class="game-screen" id="successScreen" style="display: none;">
+        <div class="screen-content">
+            <div class="screen-title success-title">🌟 QUEST COMPLETE! 🌟</div>
+            <div class="screen-message">
+                You successfully crossed Lumo's Bridge! Your wisdom has made you a hero!<br><br>
+                You answered <span id="finalScore">0</span> questions correctly and made it to the other side!
+            </div>
+            <button class="screen-btn" onclick="restartChallenge()">Play Again</button>
+        </div>
+    </div>
+
+    <div class="game-screen" id="gameOverScreen" style="display: none;">
+        <div class="screen-content">
+            <div class="screen-title fail-title">💔 OH NO! 💔</div>
+            <div class="screen-message">
+                The glass shattered beneath you!<br><br>
+                You made it <span id="stepsCompleted">0</span> steps across before falling.<br><br>
+                **Try again and be mindful of your steps!**
+            </div>
+            <button class="screen-btn" onclick="restartChallenge()">Try Again</button>
+        </div>
+    </div>
+
+    <div class="bridge-container" id="bridgeContainer" style="display: none;">
+        <div class="platform start">🧙‍♂️</div>
+        <div id="glassPanels"></div>
+        <div class="platform end" id="endPlatform">👑</div>
+        <div class="player" id="player"></div>
+    </div>
+
+    <div class="question-interface" id="questionInterface" style="display: none;">
+        <div class="question-header">
+            <div class="question-title">Lumo's Health Quest</div>
+            <div class="progress-info">
+                Step <span id="currentStep">1</span> of <span id="totalSteps">10</span>
+            </div>
+        </div>
+        <div class="question-text" id="questionText">Loading question...</div>
+        <div class="answer-buttons">
+            <button class="answer-btn" id="trueBtn" onclick="selectAnswer(true)">True</button>
+            <button class="answer-btn" id="falseBtn" onclick="selectAnswer(false)">False</button>
+        </div>
+        <button class="step-forward-btn" id="stepForwardBtn" onclick="stepForward()">Step Forward</button>
+    </div>
+
+    <div class="step-indicators" id="stepIndicators" style="display: none;"></div>
+
+    <script>
+        // Data and Logic
+        // The questions array is structured like an external JSON file.
+        // For local hosting, we can define it directly in the script.
+        const questionsData = [
+            { "question": "Moving your body can help boost your mood.", "answer": true },
+            { "question": "You must always exercise in a gym to be healthy.", "answer": false },
+            { "question": "Fruits and vegetables provide important vitamins.", "answer": true },
+            { "question": "Staying up all night has no impact on your focus the next day.", "answer": false },
+            { "question": "Deep breathing can help calm your body.", "answer": true },
+            { "question": "Stretching should always be painful to work.", "answer": false },
+            { "question": "Whole grains provide fiber that supports digestion.", "answer": true },
+            { "question": "Screens before bedtime can make it harder to sleep.", "answer": true },
+            { "question": "Laughing with friends can improve your well-being.", "answer": true },
+            { "question": "Drinking soda is the best way to stay hydrated.", "answer": false },
+            { "question": "A short walk can give you more energy.", "answer": true },
+            { "question": "You should avoid all fats in your diet.", "answer": false },
+            { "question": "A regular bedtime can improve sleep quality.", "answer": true },
+            { "question": "Feeling nervous before a new activity is always bad.", "answer": false },
+            { "question": "Playing outdoors can strengthen muscles and bones.", "answer": true },
+            { "question": "Skipping breakfast always improves concentration.", "answer": false },
+            { "question": "Yoga can help reduce stress.", "answer": true },
+            { "question": "Only adults benefit from regular exercise.", "answer": false },
+            { "question": "Reading in dim light damages your eyesight permanently.", "answer": false },
+            { "question": "Listening to music can improve your mood.", "answer": true },
+            { "question": "Drinking enough water can help your skin stay healthy.", "answer": true },
+            { "question": "Running is the only way to build endurance.", "answer": false },
+            { "question": "Too much added sugar can harm your health.", "answer": true },
+            { "question": "Napping for 20 minutes can improve alertness.", "answer": true },
+            { "question": "Writing down what you're grateful for can boost happiness.", "answer": true },
+            { "question": "You need to be sweating heavily for exercise to count.", "answer": false },
+            { "question": "Eating colorful fruits and vegetables helps you get different nutrients.", "answer": true },
+            { "question": "You can fully recover from a week of lost sleep by sleeping extra one night.", "answer": false },
+            { "question": "Talking to a trusted friend can reduce stress.", "answer": true },
+            { "question": "Brushing teeth daily prevents tooth decay.", "answer": true },
+            { "question": "Lifting very heavy weights is the only way to build strength.", "answer": false },
+            { "question": "Nuts and seeds contain healthy fats and protein.", "answer": true },
+            { "question": "Staying up late every night is part of healthy sleep hygiene.", "answer": false },
+            { "question": "Taking slow breaths before a test can help you feel calmer.", "answer": true },
+            { "question": "Regular movement helps your heart pump more efficiently.", "answer": true },
+            { "question": "Fast food always provides balanced nutrition.", "answer": false },
+            { "question": "Good sleep can help improve memory.", "answer": true },
+            { "question": "Taking breaks from social media can support mental health.", "answer": true },
+            { "question": "Washing hands reduces the spread of germs.", "answer": true },
+            { "question": "Exercise only helps your body, not your mind.", "answer": false },
+            { "question": "Vegetables contain fiber that helps digestion.", "answer": true },
+            { "question": "Sleep is less important for kids than for adults.", "answer": false },
+            { "question": "Practicing mindfulness can lower stress levels.", "answer": true },
+            { "question": "Being physically active can reduce the risk of some illnesses.", "answer": true },
+            { "question": "All snacks are unhealthy for you.", "answer": false },
+            { "question": "Going to bed at different times each night improves rest.", "answer": false },
+            { "question": "Helping others can improve your mood.", "answer": true },
+            { "question": "Regular activity helps build stronger bones.", "answer": true },
+            { "question": "Coughing and sneezing into your hands is the best way to stop germs.", "answer": false },
+            { "question": "Spending time in nature can reduce stress.", "answer": true }
+        ];
+
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedAnswer = null;
+        let isAnswered = false;
+        let gameOver = false;
+        const totalSteps = 10;
+        const panelWidth = 100;
+        const panelGap = 20;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startGame() {
+            questions = shuffleArray(questionsData).slice(0, totalSteps);
+            currentQuestionIndex = 0;
+            score = 0;
+            gameOver = false;
+            generateBridge();
+            updateStepIndicators();
+            showQuestion();
+            document.getElementById('player').style.transition = 'none';
+        }
+
+        function generateBridge() {
+            const bridge = document.getElementById('glassPanels');
+            bridge.innerHTML = '';
+            for (let i = 0; i < totalSteps; i++) {
+                const panel = document.createElement('div');
+                panel.classList.add('glass-panel');
+                panel.style.left = `${(i * (panelWidth + panelGap)) + 60}px`; // Add 60px to offset for the start platform
+                panel.dataset.index = i;
+                panel.onclick = () => {
+                    // This is a stylistic choice. We'll disable clicking on panels,
+                    // as the user's action is to answer the question, not choose a panel.
+                };
+                bridge.appendChild(panel);
+            }
+        }
+
+        function updateStepIndicators() {
+            const indicators = document.getElementById('stepIndicators');
+            indicators.innerHTML = '';
+            for (let i = 0; i < totalSteps; i++) {
+                const dot = document.createElement('div');
+                dot.classList.add('step-dot');
+                if (i < currentQuestionIndex) {
+                    dot.classList.add('completed');
+                } else if (i === currentQuestionIndex) {
+                    dot.classList.add('current');
+                }
+                indicators.appendChild(dot);
+            }
+        }
+
+        function showQuestion() {
+            if (currentQuestionIndex >= totalSteps) {
+                endGame(true);
+                return;
+            }
+            isAnswered = false;
+            document.getElementById('questionText').textContent = questions[currentQuestionIndex].question;
+            document.getElementById('currentStep').textContent = currentQuestionIndex + 1;
+            document.getElementById('trueBtn').disabled = false;
+            document.getElementById('falseBtn').disabled = false;
+            document.getElementById('trueBtn').classList.remove('correct', 'incorrect');
+            document.getElementById('falseBtn').classList.remove('correct', 'incorrect');
+            document.getElementById('stepForwardBtn').classList.remove('show');
+            
+            const player = document.getElementById('player');
+            player.classList.remove('falling');
+        }
+
+        function selectAnswer(userAnswer) {
+            if (isAnswered || gameOver) return;
+            isAnswered = true;
+            selectedAnswer = userAnswer;
+            const currentQuestion = questions[currentQuestionIndex];
+            const isCorrect = userAnswer === currentQuestion.answer;
+            const trueBtn = document.getElementById('trueBtn');
+            const falseBtn = document.getElementById('falseBtn');
+
+            trueBtn.disabled = true;
+            falseBtn.disabled = true;
+
+            if (isCorrect) {
+                score++;
+                if (userAnswer) trueBtn.classList.add('correct'); else falseBtn.classList.add('correct');
+                document.getElementById('stepForwardBtn').classList.add('show');
+            } else {
+                if (userAnswer) trueBtn.classList.add('incorrect'); else falseBtn.classList.add('incorrect');
+                const player = document.getElementById('player');
+                player.classList.add('falling');
+                setTimeout(() => endGame(false), 2000);
+            }
+        }
+
+        function stepForward() {
+            if (gameOver) return;
+
+            const player = document.getElementById('player');
+            player.classList.add('moving');
+
+            // Calculate new position
+            const newX = (currentQuestionIndex * (panelWidth + panelGap)) + 60;
+            player.style.left = `${newX + 60}px`; // Add 60px to land on the center of the next panel
+            player.style.top = `-80px`; // Keep height consistent
+
+            currentQuestionIndex++;
+            updateStepIndicators();
+
+            setTimeout(() => {
+                player.classList.remove('moving');
+                showQuestion();
+            }, 1200);
+        }
+
+        function endGame(didWin) {
+            gameOver = true;
+            document.getElementById('bridgeContainer').style.display = 'none';
+            document.getElementById('questionInterface').style.display = 'none';
+            document.getElementById('stepIndicators').style.display = 'none';
+
+            if (didWin) {
+                document.getElementById('finalScore').textContent = score;
+                document.getElementById('successScreen').style.display = 'flex';
+            } else {
+                document.getElementById('stepsCompleted').textContent = currentQuestionIndex;
+                document.getElementById('gameOverScreen').style.display = 'flex';
+            }
+        }
+
+        function startChallenge() {
+            document.getElementById('introScreen').style.display = 'none';
+            document.getElementById('bridgeContainer').style.display = 'block';
+            document.getElementById('questionInterface').style.display = 'flex';
+            document.getElementById('stepIndicators').style.display = 'flex';
+            startGame();
+        }
+
+        function restartChallenge() {
+            document.getElementById('successScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            document.getElementById('player').style.left = `-90px`;
+            startChallenge();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial setup
+        });
+
+    </script>
+</body>
+</html>
